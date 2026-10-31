@@ -210,12 +210,14 @@ async function searchCommons(query, res) {
         const raw = typeof x === "object" && x !== null ? x.value : x;
         return String(raw ?? "").replace(/<[^>]*>/g, "").trim();
       };
+      const li = stripHtml(meta.LicenseShortName) || "—";
+      const clean = /^0/.test(li) ? "CC0" : li.replace(/^cc\s*/i, "");
       return {
         id: `wm-${p.pageid}`,
         title: (p.title || "").replace(/^File:/, ""),
         creator: stripHtml(meta.Artist) || "—",
         url: (ii.url || "").split("?")[0], // commons appends utm_* tracking params
-        license: (stripHtml(meta.LicenseShortName) || "—").replace(/^cc\s*/i, ""),
+        license: clean,
         source: "wikimedia",
         duration: ii.duration ? Math.round(Number(ii.duration) * 1000) : null,
         filesize: ii.size ? Number(ii.size) : null,
