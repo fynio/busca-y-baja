@@ -1,0 +1,6 @@
+# local content: downloaded tracks stay on the machine
+music/
+node_modules/
+.DS_Store
+*.log
+tmp/

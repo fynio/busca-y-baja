@@ -8,14 +8,52 @@
 
 ---
 
-## 🎧 ¿De qué va esto?
+## 🎧 Objetivo del proyecto
 
-Un servidor local con interfaz web diseñada para **flujo creativo**: buscás tema → lo escuchás en la barra del
-reproductor fijo → clic en *Descargar* → el MP3 cae en tu carpeta `music/` listo para el timeline.
-Sin recorrer páginas, sin cuentas, sin dudas de derechos.
+**El objetivo es tener TU biblioteca musical, corriendo en TU máquina, lista para tus streams.**
 
-Todo el catálogo viene de plataformas con licencias **Creative Commons / dominio público** — lo que hace
-referencia a que **estás autorizado a usar el material** (con crédito donde aplique).
+¿Por qué un **servidor local** y no otra página web más? Porque el uso real detrás de este proyecto es
+armar sets de música para las transmisiones y los videos sin depender de servicios de streaming
+(que se cortan, no bajás el archivo, y encima te exponen a strikes de copyright en pleno directo):
+
+- **Guards todo en disco local** (`music/`): tus temas quedan tuyos, funcionan sin internet y sin
+  "sesión iniciada", listos para arrastrar al reproductor de OBS, cortar al editor oFatherlayer.
+- **Legal de punta a punta**: todo el catálogo viene de repos con licencia **Creative Commons /
+  dominio público** — con la guía de licencias a la vista decidís en segundos qué suena en un canal
+  monetizado y qué no.
+- **Un solo lugar**: ccMixter, Wikimedia, Jamendo, Freesound e Internet Archive en una sola interfaz.
+  Cero pestañas, cero revisar cinco sitios para encontrar un beat.
+- **Como es tuyo y corre en tu máquina**: no hay cuentas, no hay tracking, no hay "premium".
+  El server es tuyo.
+
+### ¿Cómo funciona (arquitectura en 4 líneas)?
+
+```
+navegador (interfaz) → tus clicks → servidor Node local (puerto 5177)
+        ↙ busca en los repos (5 APIs, sin keys normalmente)   ↘ descarga el MP3 → carpeta music/
+```
+
+El browser hace pedidos al `localhost`; el server habla con los repos (unifica formatos,
+mete una cola anti-throttle, cachea respuestas 10 minutos y hace proxy del audio para que
+el preview y la descarga siempre funcionen). Vos solo escuchás y bajás.
+
+### ¿Qué ya tenés hecho? (estado actual)
+
+- ✅ **Servidor Node puro** — cero dependencias `npm`, arranca en 1 comando
+- ✅ **Cuatro motores propios sin API key**: ccMixter (tags reales), Wikimedia Commons
+  (duración + licencia parseadas), Internet Archive netlabels (~66.000 lanzamientos con MP3 directo),
+  Jamendo vía Openverse
+- ✅ **Interfaz con tu marca** (RGT): fondo `#050604`, verde Kick `#53fc18`, firma SVG real,
+  Outfit + JetBrains Mono, diagonales al 115° y halos
+- ✅ **Lista con 20+ temas por repositorio** al entrar (sin escribir nada)
+- ✅ **Categorías**: Chill, Ambient, Electrónica, Rock, Pop, Hip‑Hop, Jazz, Clásica, Instrumental…
+- ✅ **Reproductor fijo** con preview de streaming real (soporte Range, no bloquea la navegación)
+- ✅ **Descarga a un clic** a `music/` con nomenclatura `Autor - Título.mp3` sin colisiones
+- ✅ **Filtros de licencia** para uso comercial / modificación — para canales que generan dinero
+- ✅ **Panel de archivos** descargados (listar y borrar) vía API
+
+Lo único opcional: una **API key gratis** de Openverse para que Jamendo/Freesound no tengan
+límite horario (ver abajo — 2 minutos de configuración).
 
 ---
 
