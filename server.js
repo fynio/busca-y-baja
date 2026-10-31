@@ -211,7 +211,7 @@ async function searchCommons(query, res) {
         return String(raw ?? "").replace(/<[^>]*>/g, "").trim();
       };
       const li = stripHtml(meta.LicenseShortName) || "—";
-      const clean = /^0/.test(li) ? "CC0" : li.replace(/^cc\s*/i, "");
+      const clean = /^cc0/i.test(li) ? "CC0" : li.replace(/^cc\s*/i, "");
       return {
         id: `wm-${p.pageid}`,
         title: (p.title || "").replace(/^File:/, ""),
