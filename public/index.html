@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Busca &amp; Baja — música sin copyright | rodrigofynio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* marca RGT — tomada de videos/rodrigo-stinger */
+    --bg: #050604;            /* negro casi puro (fondo del stage) */
+    --panel: #0a0c09;         /* superficie del stage */
+    --panel-2: #0a0b08;
+    --ink: #eef4e6;           /* tinta clara */
+    --ink-dim: #b5bfae;
+    --muted: #78826f;
+    --green: #53fc18;         /* Kick green — acento */
+    --green-soft: #ccff9d;
+    --rail: rgba(83, 252, 24, .10);
+    --border: #1c211a;
+    --ok: #53fc18;
+    --err: #ff6659;
+    --radius: 14px;
+    --mono: "JetBrains Mono", monospace;
+    --sans: "Outfit", sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body {
+    font-family: var(--sans); font-weight: 300; background: var(--bg); color: var(--ink);
+    min-height: 100vh; padding: 30px 24px 60px; position: relative; overflow-x: hidden;
+  }
+  /* ambiente: brillo verde arriba + diagonales muy sutiles del estilo RGT */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(900px 380px at 18% -8%, rgba(83, 252, 24, .075), transparent 62%),
+      repeating-linear-gradient(115deg, var(--rail) 0 1px, transparent 1px 140px);
+  }
+  body > * { position: relative; z-index: 1; }
+
+  /* ---------- header con firma ---------- */
+  header { max-width: 1100px; margin: 0 auto 26px; }
+  .brand { display: flex; align-items: center; gap: 18px; }
+  #brand-r { width: 58px; height: 58px; flex-shrink: 0; }
+  #brand-r .rail { stroke: var(--green); stroke-width: 7; stroke-linecap: square; fill: none; }
+  .brand-txt { min-width: 0; }
+  #brand-name { width: 172px; height: auto; display: block; }
+  #brand-name path { fill: var(--ink); }
+  .tagline { color: var(--muted); margin-top: 8px; font-size: .95rem; font-weight: 300; }
+  .tagline em { font-style: normal; color: var(--green-soft); }
+  .tagline .sep { color: var(--green); font-family: var(--mono); padding: 0 4px; }
+
+  /* ---------- buscador ---------- */
+  .bar { max-width: 1100px; margin: 0 auto 18px; display: flex; gap: 10px; }
+  .bar input[type="search"] {
+    flex: 1; padding: 13px 18px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--panel); color: var(--ink); font-size: 1rem; font-family: var(--sans);
+    outline: none; transition: box-shadow .15s, border-color .15s;
+  }
+  .bar input[type="search"]::placeholder { color: var(--muted); }
+  .bar input[type="search"]:focus {
+    border-color: var(--green); box-shadow: 0 0 0 3px rgba(83, 252, 24, .10);
+  }
+  .bar button {
+    padding: 13px 26px; border: 1px solid var(--green); border-radius: var(--radius);
+    background: transparent; color: var(--green); font-family: var(--mono); font-weight: 600;
+    font-size: .92rem; cursor: pointer; letter-spacing: .08em; text-transform: uppercase;
+    transition: background .15s, color .15s, box-shadow .15s;
+  }
+  .bar button:hover {
+    background: var(--green); color: #050604; box-shadow: 0 0 24px rgba(83, 252, 24, .35);
+  }
+
+  /* ---------- chips ---------- */
+  .chiprow {
+    max-width: 1100px; margin: 0 auto 10px; display: flex; gap: 8px;
+    overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin;
+  }
+  .chiprow::-webkit-scrollbar { height: 5px; }
+  .chiprow::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .chip {
+    flex-shrink: 0; padding: 8px 16px; border: 1px solid var(--border); border-radius: 999px;
+    background: var(--panel); cursor: pointer; font-size: .86rem; color: var(--ink-dim);
+    font-family: var(--mono); transition: all .15s; user-select: none; white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--green); color: var(--ink); }
+  .chip.active {
+    background: rgba(83, 252, 24, .12); color: var(--green);
+    border-color: var(--green); box-shadow: 0 0 14px rgba(83, 252, 24, .18) inset;
+  }
+  .chiprow .license {
+    margin-left: auto; padding: 8px 14px; border-radius: 999px; background: var(--panel);
+    border: 1px solid var(--border); color: var(--ink-dim); font-size: .86rem;
+    font-family: var(--mono); cursor: pointer; flex-shrink: 0;
+  }
+  .chiprow .license:hover { border-color: var(--green); color: var(--ink); }
+
+  /* ---------- lista ---------- */
+  main { max-width: 1100px; margin: 0 auto; }
+  .status { max-width: 1100px; margin: 6px auto 14px; color: var(--muted); font-size: .9rem; font-family: var(--mono); }
+  .status .hint { color: var(--green-soft); font-size: .82rem; margin-top: 4px; }
+  .spinner {
+    display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border);
+    border-top-color: var(--green); border-radius: 50%; animation: spin .7s linear infinite;
+    vertical-align: -2px; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .list { display: flex; flex-direction: column; gap: 10px; }
+  .row {
+    display: grid; grid-template-columns: 52px 1fr auto; align-items: center; gap: 14px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 14px; transition: transform .12s, border-color .12s, box-shadow .12s;
+  }
+  .row:hover { border-color: rgba(83, 252, 24, .35); transform: translateX(3px); }
+  .row.playing {
+    border-color: var(--green);
+    box-shadow: 0 0 20px rgba(83, 252, 24, .12), 0 0 20px rgba(83, 252, 24, .05) inset;
+  }
+  .thumb {
+    width: 52px; height: 52px; border-radius: 10px; overflow: hidden; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; position: relative; flex-shrink: 0;
+    background: var(--panel-2); border: 1px solid #151a12;
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb .fallback { font-family: var(--mono); font-weight: 600; color: var(--green); opacity: .75; }
+  .iconfun {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(83, 252, 24, .28); color: #050604; font-size: 1.2rem; opacity: 0; transition: opacity .12s;
+  }
+  .thumb:hover .iconfun { opacity: 1; }
+
+  .r-info { min-width: 0; }
+  .r-title { font-weight: 400; font-size: .98rem; cursor: pointer; }
+  .row.playing .r-title { color: var(--green); text-shadow: 0 0 12px rgba(83, 252, 24, .45); }
+  .r-title:hover { color: var(--green); }
+  .r-sub { color: var(--muted); font-size: .8rem; display: flex; gap: 8px; align-items: center; margin-top: 3px; }
+  .r-sub .sep { color: var(--green); opacity: .55; font-family: var(--mono); }
+  .r-tag {
+    font-size: .68rem; padding: 2px 8px; border-radius: 999px; font-family: var(--mono);
+    background: #11150e; color: var(--ink-dim); border: 1px solid var(--border);
+  }
+  .r-tag.cc { color: var(--green-soft); border-color: rgba(83, 252, 24, .3); background: rgba(83, 252, 24, .06); }
+
+  .r-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+  .dl-btn {
+    padding: 8px 16px; border: 1px solid var(--green); border-radius: 9px; background: transparent;
+    color: var(--green); font-family: var(--mono); font-weight: 600; font-size: .8rem; cursor: pointer;
+    letter-spacing: .04em; transition: background .15s, color .15s, box-shadow .15s; white-space: nowrap;
+  }
+  .dl-btn:hover { background: var(--green); color: #050604; box-shadow: 0 0 18px rgba(83, 252, 24, .30); }
+  .dl-btn.saving { border-color: var(--border); color: var(--muted); cursor: wait; }
+  .dl-btn.done { background: var(--green); color: #050604; }
+  .ext-link {
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 9px; text-decoration: none;
+    color: var(--muted); font-family: var(--mono); font-size: .82rem; transition: all .15s;
+  }
+  .ext-link:hover { border-color: var(--green); color: var(--green); }
+  .empty { text-align: center; color: var(--muted); padding: 60px 0; font-size: 1.05rem; }
+
+  /* ---------- reproductor fijo ---------- */
+  #player {
+    position: fixed; left: 0; right: 0; bottom: 0; background: rgba(10, 12, 9, .92);
+    backdrop-filter: blur(14px); border-top: 1px solid var(--green);
+    box-shadow: 0 -8px 30px rgba(83, 252, 24, .07); padding: 12px 24px;
+    display: none; align-items: center; gap: 16px; z-index: 40;
+  }
+  #player.show { display: flex; }
+  #p-img {
+    width: 46px; height: 46px; border-radius: 9px; overflow: hidden; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-family: var(--mono);
+    font-weight: 600; color: var(--green); background: var(--panel-2); border: 1px solid var(--border);
+  }
+  #p-img img { width: 100%; height: 100%; object-fit: cover; }
+  #p-info { min-width: 0; width: 230px; }
+  #p-title { font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #p-sub { color: var(--muted); font-size: .76rem; font-family: var(--mono); }
+  #player audio { flex: 1; height: 38px; }
+
+  #toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--panel); border: 1px solid var(--green); color: var(--ink);
+    font-family: var(--mono); font-size: .82rem; padding: 11px 20px; border-radius: 10px;
+    box-shadow: 0 0 24px rgba(83, 252, 24, .15);
+    transition: transform .3s; z-index: 60; pointer-events: none; white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.err { border-color: var(--err); color: var(--err); box-shadow: none; }
+
+  /* ---------- qué es esta página ---------- */
+  .about {
+    max-width: 1100px; margin: 46px auto 0; border-top: 1px solid var(--border); padding-top: 28px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 34px;
+  }
+  .about h2 {
+    font-family: var(--mono); font-size: .8rem; font-weight: 600; color: var(--green);
+    letter-spacing: .14em; text-transform: uppercase; margin-bottom: 12px;
+  }
+  .about p { color: var(--ink-dim); font-size: .92rem; line-height: 1.65; margin-bottom: 10px; }
+  .about strong { color: var(--ink); font-weight: 400; }
+  .about .k { color: var(--green-soft); font-family: var(--mono); font-size: .84rem; }
+  page-li, .about li { list-style: none; }
+
+  /* ---------- footer ---------- */
+  .foot {
+    max-width: 1100px; margin: 40px auto 0; border-top: 1px solid var(--border); padding: 26px 0 10px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 18px; justify-content: space-between;
+  }
+  .foot-left { display: flex; align-items: center; gap: 14px; }
+  .foot-left #brand-r { width: 34px; height: 34px; }
+  .foot-sign { color: var(--muted); font-size: .8rem; font-family: var(--mono); line-height: 1.6; }
+  .foot-sign b { color: var(--ink); font-weight: 600; }
+  .kick {
+    display: inline-flex; align-items: center; gap: 10px; text-decoration: none;
+    border: 1px solid var(--green); border-radius: 999px; padding: 11px 22px;
+    font-family: var(--mono); font-weight: 600; font-size: .88rem; color: var(--green);
+    transition: background .15s, color .15s, box-shadow .15s;
+  }
+  .kick:hover { background: var(--green); color: #050604; box-shadow: 0 0 26px rgba(83, 252, 24, .35); }
+  .kick .arr { font-family: var(--mono); }
+  .foot-note { width: 100%; color: var(--muted); font-size: .74rem; font-family: var(--mono); margin-top: 6px; }
+
+  @media (max-width: 760px) {
+    .row { grid-template-columns: 44px 1fr; }
+    .r-actions { grid-column: 2; justify-self: start; }
+    .about { grid-template-columns: 1fr; }
+    #p-info { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <svg id="brand-r" viewBox="-4 -1 336.13 333" xmlns="http://www.w3.org/2000/svg" aria-label="monograma R">
+      <g id="rails">
+        <line class="rail" x1="163.05" y1="3" x2="163.05" y2="324" />
+        <line class="rail" x1="324.05" y1="3" x2="164.88" y2="161.83" />
+        <line class="rail" x1="164.73" y1="161.77" x2="326.05" y2="317" />
+        <line class="rail" x1="2.05" y1="320" x2="83.97" y2="243.53" />
+        <line class="rail" x1="2.05" y1="3" x2="165.05" y2="3" />
+        <line class="rail" x1="161.05" y1="3" x2="326.05" y2="3" />
+        <line class="rail" x1="161.05" y1="321" x2="0.05" y2="321" />
+      </g>
+    </svg>
+    <div class="brand-txt">
+      <svg id="brand-name" viewBox="-2 402 310 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g id="letters" transform="translate(-118.19 -68.57)">
+          <path d="M120.22,475.61a42,42,0,0,1,6.72-.48c3.31,0,5.64.5,7.23,1.77a5.66,5.66,0,0,1,2.07,4.68,5.92,5.92,0,0,1-4,5.5v.1c1.56.63,2.43,2.11,3,4.17a63.73,63.73,0,0,0,1.81,6.31h-5.18a29.08,29.08,0,0,1-1.54-5.21c-.62-2.8-1.56-3.55-3.64-3.57h-1.5v8.78h-5Zm5,9.61h2c2.51,0,4-1.28,4-3.22s-1.41-3.09-3.72-3.11a10.37,10.37,0,0,0-2.27.17Z" />
+          <path d="M155.79,489.38c0,5.93-4.2,8.64-8.56,8.64-4.72,0-8.38-3.12-8.38-8.36s3.46-8.6,8.67-8.6C152.49,481.06,155.79,484.47,155.79,489.38Zm-11.74.16c0,2.77,1.17,4.88,3.32,4.88,2,0,3.22-2,3.22-4.9,0-2.4-.93-4.86-3.21-4.86S144.05,487.14,144.05,489.54Z" />
+          <path d="M174.74,474.11v18.7c0,1.84.06,3.76.13,4.85h-4.48l-.22-2.38h-.07A5.66,5.66,0,0,1,165,498c-3.83,0-6.93-3.29-6.93-8.33,0-5.46,3.4-8.63,7.27-8.63a4.93,4.93,0,0,1,4.27,1.83h.06v-8.78Zm-5.05,14.2a5.64,5.64,0,0,0-.06-.91,3,3,0,0,0-2.93-2.47c-2.31,0-3.49,2.05-3.49,4.61,0,2.73,1.35,4.46,3.45,4.46a3,3,0,0,0,2.92-2.42,4.65,4.65,0,0,0,.11-1.14Z" />
+          <path d="M178.79,486.77c0-2.38,0-3.95-.14-5.35H183l.18,3h.13a4.74,4.74,0,0,1,4.38-3.37,4.49,4.49,0,0,1,1.08.09v4.75a6.39,6.39,0,0,0-1.36-.14,3.24,3.24,0,0,0-3.46,2.56,5.42,5.42,0,0,0-.1,1.12v8.22h-5.05Z" />
+          <path d="M196.53,476.91a2.52,2.52,0,0,1-2.72,2.53,2.53,2.53,0,1,1,2.72-2.53Zm-5.2,20.75V481.42h5v16.24Z" />
+          <path d="M215.92,481.42c-.08,1.05-.14,2.42-.14,4.84v9c0,3.12-.63,5.67-2.47,7.3a9.85,9.85,0,0,1-6.58,2,13,13,0,0,1-5.84-1.24l1-3.83a9.92,9.92,0,0,0,4.7,1.22c2.39,0,4.21-1.28,4.21-4.28v-1h-.07a5.21,5.21,0,0,1-4.38,2.09c-4,0-6.86-3.25-6.86-7.9,0-5.24,3.37-8.55,7.35-8.55a4.87,4.87,0,0,1,4.45,2.3h.07l.17-1.94ZM210.73,488a3.84,3.84,0,0,0-.1-.93,2.74,2.74,0,0,0-2.71-2.24c-1.84,0-3.3,1.68-3.3,4.62,0,2.42,1.19,4.31,3.29,4.31a2.77,2.77,0,0,0,2.68-2,5.4,5.4,0,0,0,.14-1.34Z" />
+          <path d="M235.84,489.38c0,5.93-4.2,8.64-8.56,8.64-4.72,0-8.38-3.12-8.38-8.36s3.45-8.6,8.67-8.6C232.54,481.06,235.84,484.47,235.84,489.38Zm-11.74.16c0,2.77,1.17,4.88,3.32,4.88,2,0,3.22-2,3.22-4.9,0-2.4-.93-4.86-3.21-4.86S224.1,487.14,224.1,489.54Z" />
+          <path d="M264.52,496.63a24.9,24.9,0,0,1-7.47,1.25c-4.08,0-7-1-9.09-3a11,11,0,0,1-3.16-8.14c0-7.43,5.45-11.66,12.77-11.66a15.55,15.55,0,0,1,6.21,1.07l-1,4.05a12.47,12.47,0,0,0-5.21-.95c-4.21,0-7.41,2.37-7.41,7.23,0,4.62,2.91,7.32,7.05,7.32a7.33,7.33,0,0,0,2.47-.31v-4.7h-3.45v-3.94h8.34Z" />
+          <path d="M277.8,497.66l-.3-1.62h-.11a5.8,5.8,0,0,1-4.64,2,5,5,0,0,1-5.24-5c0-4.23,3.78-6.24,9.52-6.23v-.21c0-.86-.46-2.09-3-2.09a9.32,9.32,0,0,0-4.47,1.21l-.93-3.23a13.09,13.09,0,0,1,6.31-1.45c5.4,0,7.11,3.19,7.11,7v5.67a24.18,24.18,0,0,0,.26,3.93Zm-.62-7.68c-2.65,0-4.7.63-4.7,2.56a1.81,1.81,0,0,0,2,1.94,2.76,2.76,0,0,0,2.61-1.86,3.1,3.1,0,0,0,.09-.87Z" />
+          <path d="M286.07,486.77c0-2.38,0-3.95-.13-5.35h4.34l.18,3h.12a4.76,4.76,0,0,1,4.39-3.37,4.54,4.54,0,0,1,1.08.09v4.75a6.49,6.49,0,0,0-1.37-.14,3.25,3.25,0,0,0-3.46,2.56,6.27,6.27,0,0,0-.09,1.12v8.22h-5.06Z" />
+          <path d="M310.6,497.25a11.88,11.88,0,0,1-4.52.76c-5.25,0-8.59-3.22-8.59-8.31,0-4.75,3.25-8.63,9.28-8.63a11.55,11.55,0,0,1,3.85.64l-.78,3.75a6.85,6.85,0,0,0-2.83-.52,4.56,4.56,0,0,0,.09,9.12,7.59,7.59,0,0,0,2.9-.53Z" />
+          <path d="M318.57,476.91a2.67,2.67,0,1,1-2.67-2.52A2.5,2.5,0,0,1,318.57,476.91Zm-5.19,20.75V481.42h5.05v16.24Z" />
+          <path d="M331.7,497.66l-.29-1.62h-.11a5.81,5.81,0,0,1-4.64,2,5,5,0,0,1-5.25-5c0-4.23,3.79-6.24,9.53-6.23v-.21c0-.86-.46-2.09-3-2.09a9.33,9.33,0,0,0-4.48,1.21l-.93-3.23a13.17,13.17,0,0,1,6.32-1.45c5.4,0,7.11,3.19,7.11,7v5.67a23.1,23.1,0,0,0,.26,3.93Zm-.61-7.68c-2.65,0-4.71.63-4.71,2.56a1.82,1.82,0,0,0,2,1.94,2.76,2.76,0,0,0,2.61-1.86,3.1,3.1,0,0,0,.09-.87Z" />
+          <path d="M349.89,479.54h-6V475.3h17.21v4.24h-6.12v18.12h-5.05Z" />
+          <path d="M361.78,486.77c0-2.38,0-3.95-.14-5.35H366l.18,3h.13a4.74,4.74,0,0,1,4.38-3.37,4.49,4.49,0,0,1,1.08.09v4.75a6.42,6.42,0,0,0-1.37-.14,3.25,3.25,0,0,0-3.46,2.56,6.27,6.27,0,0,0-.09,1.12v8.22h-5.05Z" />
+          <path d="M378,491.16c.15,2.1,2.22,3.09,4.57,3.09a13.49,13.49,0,0,0,4.47-.69l.68,3.42a15.82,15.82,0,0,1-5.88,1c-5.5,0-8.66-3.21-8.66-8.27,0-4.12,2.58-8.68,8.19-8.68,5.26,0,7.25,4.09,7.25,8.1a9.45,9.45,0,0,1-.19,2Zm5.92-3.46c0-1.21-.53-3.29-2.83-3.29-2.13,0-3,1.95-3.13,3.29Z" />
+          <path d="M388.31,500.66a4.56,4.56,0,0,0,3-1.08c.73-.75,1-2.05,1-5.28V481.42h5.06v14.1c0,3.53-.77,5.68-2.28,7.09a9.39,9.39,0,0,1-6.27,2Zm9.16-23.75a2.51,2.51,0,0,1-2.71,2.53,2.53,2.53,0,1,1,2.71-2.53Z" />
+          <path d="M417.3,489.38c0,5.93-4.2,8.64-8.55,8.64-4.73,0-8.39-3.12-8.39-8.36s3.46-8.6,8.68-8.6C414,481.06,417.3,484.47,417.3,489.38Zm-11.74.16c0,2.77,1.17,4.88,3.33,4.88,2,0,3.21-2,3.21-4.9,0-2.4-.92-4.86-3.21-4.86S405.56,487.14,405.56,489.54Z" />
+        </g>
+      </svg>
+    </div>
+  </div>
+  <p class="tagline">
+    buscador de música sin copyright <span class="sep">//</span>
+    <em>ccMixter</em> <span class="sep">·</span> <em>Jamendo</em> <span class="sep">·</span>
+    <em>Free Music Archive</em> <span class="sep">·</span> <em>Freesound</em> <span class="sep">·</span> <em>Wikimedia</em>
+    <span class="sep">//</span> descargá local y legal para tus videos y transmisiones
+  </p>
+</header>
+
+<div class="bar">
+  <input id="q" type="search" placeholder="Buscar por tema… (o dejalo vacío para navegar)" />
+  <button id="go">Buscar</button>
+</div>
+
+<div class="chiprow" id="platforms">
+  <div class="chip active" data-engine="all">Todas</div>
+  <div class="chip" data-engine="ccmixter">ccMixter</div>
+  <div class="chip" data-engine="openverse" data-source="jamendo">Jamendo</div>
+  <div class="chip" data-engine="ia">Internet Archive</div>
+  <div class="chip" data-engine="openverse" data-source="freesound">Freesound</div>
+  <div class="chip" data-engine="commons">Wikimedia</div>
+  <select class="license" id="license">
+    <option value="">Todas las licencias</option>
+    <option value="commercial">Uso comercial permitido</option>
+    <option value="commercial,modification">Comercial + modificación</option>
+  </select>
+</div>
+
+<div class="chiprow" id="genres">
+  <div class="chip active" data-genre="">Categorías: todas</div>
+  <div class="chip" data-genre="chill">Chill</div>
+  <div class="chip" data-genre="ambient">Ambient</div>
+  <div class="chip" data-genre="electronic">Electrónica</div>
+  <div class="chip" data-genre="rock">Rock</div>
+  <div class="chip" data-genre="pop">Pop</div>
+  <div class="chip" data-genre="hip hop">Hip-Hop</div>
+  <div class="chip" data-genre="jazz">Jazz</div>
+  <div class="chip" data-genre="classical">Clásica</div>
+  <div class="chip" data-genre="instrumental">Instrumental</div>
+  <div class="chip" data-genre="acoustic">Acústica</div>
+  <div class="chip" data-genre="experimental">Experimental</div>
+</div>
+
+<main>
+  <div class="status" id="status"></div>
+  <div class="list" id="list"></div>
+  <div class="empty" id="empty">Cargando repositorios…</div>
+</main>
+
+<section class="about">
+  <div>
+    <h2>// qué es esta página</h2>
+    <p>Es tu <strong>buscador y agregador de música libre</strong>: junto en una sola interfaz
+      los repositorios de música con licencia Creative Commons (ccMixter, Jamendo,
+      Free Music Archive, Freesound, Wikimedia) para que no tengas que recorrerlos uno por uno.</p>
+    <p>Todo lo que aparece acá es <strong>legal para usar y descargar</strong> sin infringir
+      copyright: escuchás la <span class="k">preview</span> y, con un clic, el MP3 queda
+      guardado en la carpeta local <span class="k">music/</span> para editar tus videos y
+      transmitir sin problemas de derechos.</p>
+  </div>
+  <div>
+    <h2>// cómo cargarla bien</h2>
+    <p>Entrá a una plataforma <span class="k">(chip de repo)</span> para listar sus temas al instante,
+      usá las <span class="k">categorías</span> para filtrar por estilo y prestale atención al
+      <span class="k">badge CC</span> de cada fila: <strong>by</strong> es comercial con atribución,
+      <strong>by-nc</strong> no se puede usar si el contenido genera dinero.</p>
+    <p>El botón <span class="k">↗</span> de cada tema te lleva a la página original para poner
+      el crédito correcto del autor.</p>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="foot-left">
+    <svg id="brand-r" viewBox="-4 -1 336.13 333" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <g>
+        <line class="rail" x1="163.05" y1="3" x2="163.05" y2="324" />
+        <line class="rail" x1="324.05" y1="3" x2="164.88" y2="161.83" />
+        <line class="rail" x1="164.73" y1="161.77" x2="326.05" y2="317" />
+        <line class="rail" x1="2.05" y1="320" x2="83.97" y2="243.53" />
+        <line class="rail" x1="2.05" y1="3" x2="165.05" y2="3" />
+        <line class="rail" x1="161.05" y1="3" x2="326.05" y2="3" />
+        <line class="rail" x1="161.05" y1="321" x2="0.05" y2="321" />
+      </g>
+    </svg>
+    <div class="foot-sign">
+      creada por <b>rodrigofynio</b><br />
+      🎵 todos los temas: Creative Commons — respeta y credita al autor
+    </div>
+  </div>
+  <a class="kick" href="https://kick.com/rodrigofynio" target="_blank" rel="noopener">
+    seguí las transmisiones en kick.com/rodrigofynio <span class="arr">→</span>
+  </a>
+  <div class="foot-note">
+    agrega local: ccMixter directa · Jamendo · Free Music Archive · Freesound · Wikimedia vía Openverse
+  </div>
+</footer>
+
+<div id="player">
+  <div id="p-img"></div>
+  <div id="p-info">
+    <div id="p-title"></div>
+    <div id="p-sub"></div>
+  </div>
+  <audio id="audio" controls preload="auto"></audio>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const list = $("#list"), statusEl = $("#status"), emptyEl = $("#empty"), toastEl = $("#toast");
+const playerEl = $("#player"), audioEl = $("#audio");
+const SOURCE_LABEL = {
+  jamendo: "Jamendo", ccmixter: "ccMixter", freesound: "Freesound",
+  wikimedia: "Wikimedia", internetarchive: "Internet Archive",
+};
+
+let toastTimer;
+function toast(msg, isErr = false) {
+  toastEl.textContent = msg;
+  toastEl.className = isErr ? "show err" : "show";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 3200);
+}
+
+function fmtDuration(ms) {
+  if (!ms) return "—";
+  const s = Math.round(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+function fmtBytes(b) {
+  if (!b) return "";
+  return b > 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${(b / 1e3).toFixed(0)} KB`;
+}
+const esc = (s) =>
+  String(s ?? "").replace(/[&<>"']/g, (ch) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
+const safe = (s) =>
+  (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 _-]+/g, "").trim().slice(0, 100) || "track";
+function absHashCode(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function initials(name) {
+  return (name || "?").split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
+}
+
+// ---------- browse / search ----------
+function tagFor(label) {
+  const pending = (name) => statusEl.querySelector(`[data-pending="${CSS.escape(name)}"]`);
+  if (!pending(label)) statusEl.insertAdjacentHTML("beforeend",
+    `<span data-pending="${label}"><span class="spinner"></span>${label}…</span> `);
+}
+function clearTag(label) {
+  statusEl.querySelector(`[data-pending="${CSS.escape(label)}"]`)?.remove();
+}
+
+async function runEngine(engine, source, genre, license, seen, label) {
+  tagFor(label);
+  const text = $("#q").value.trim();
+  const params = new URLSearchParams({ engine });
+  if (text) params.set("q", text);
+  if (genre) params.set("genre", genre);
+  if (source) params.set("source", source);
+  if (license && engine === "openverse") params.set("license_type", license);
+
+  try {
+    const res = await fetch(`/api/search?${params}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "fallo");
+    clearTag(label);
+    render(data.results || [], seen);
+    if (!(data.results || []).length)
+      statusEl.insertAdjacentHTML("beforeend", `<span>${label}: sin resultados.</span> `);
+  } catch (e) {
+    clearTag(label);
+    const isOpenverse = engine === "openverse";
+    statusEl.insertAdjacentHTML("beforeend", `<span>${label}: ${esc(isOpenverse ? "límite horario (sin API key)" : e.message)}. </span>`);
+    if (isOpenverse) {
+      statusEl.insertAdjacentHTML("beforeend",
+        `<div class="hint">Openverse limita el acceso anónimo: creá una key gratis en api.openverse.org y pegala en config.json. ccMixter corre sin límites.</div>`);
+    }
+  }
+}
+
+async function run() {
+  statusEl.innerHTML = "";
+  list.innerHTML = "";
+  emptyEl.style.display = "none";
+  const seen = new Set();
+  const genre = $("#genres .chip.active")?.dataset.genre || "";
+  const license = $("#license").value;
+  const chip = $("#platforms .chip.active");
+
+  const tasks = [];
+  if (chip.dataset.engine === "ccmixter") {
+    tasks.push(runEngine("ccmixter", "", genre, license, seen, "ccMixter"));
+  } else if (chip.dataset.engine === "commons") {
+    tasks.push(runEngine("commons", "", genre, license, seen, "Wikimedia"));
+  } else if (chip.dataset.engine === "ia") {
+    tasks.push(runEngine("ia", "", genre, license, seen, "Internet Archive"));
+  } else if (chip.dataset.engine === "openverse") {
+    tasks.push(runEngine("openverse", chip.dataset.source, genre, license, seen, "Plataformas"));
+  } else {
+    tasks.push(runEngine("ccmixter", "", genre, license, seen, "ccMixter"));
+    tasks.push(runEngine("commons", "", genre, license, seen, "Wikimedia"));
+    tasks.push(runEngine("ia", "", genre, license, seen, "Internet Archive"));
+    tasks.push(runEngine("openverse", "", genre, license, seen, "Plataformas"));
+  }
+  await Promise.allSettled(tasks);
+  if (!list.children.length) emptyEl.style.display = "block";
+}
+
+function render(tracks, seen) {
+  tracks.forEach((t) => {
+    if (!t.url || seen.has(t.id)) return;
+    seen.add(t.id);
+    list.appendChild(row(t));
+  });
+}
+
+// ---------- player ----------
+let currentRowEl = null;
+function playTrack(t, rowEl) {
+  if (currentRowEl) currentRowEl.classList.remove("playing");
+  currentRowEl = rowEl;
+  rowEl.classList.add("playing");
+  playerEl.classList.add("show");
+  $("#p-title").textContent = t.title;
+  $("#p-sub").textContent = `${t.creator || "—"} · ${SOURCE_LABEL[t.source] || t.source || ""}`;
+  const img = $("#p-img");
+  img.innerHTML = t.thumbnail ? `<img src="${t.thumbnail}" alt="" />` : esc(initials(t.creator));
+  audioEl.src = `/api/stream?url=${encodeURIComponent(t.url)}`;
+  audioEl.play().catch(() => {});
+}
+
+// ---------- rows ----------
+function row(t) {
+  const el = document.createElement("div");
+  el.className = "row";
+
+  const srcLabel = SOURCE_LABEL[t.source] || t.source || "";
+  const hue = absHashCode(String(t.id)) % 360;
+  el.innerHTML = `
+    <div class="thumb" ${t.thumbnail ? "" : `style="background: linear-gradient(135deg, hsl(${hue} 45% 12%), hsl(${hue} 60% 20%))"`}>
+      ${t.thumbnail ? `<img src="${t.thumbnail}" alt="" loading="lazy" onerror="this.remove()" />` : ""}
+      <span class="iconfun">▶</span>${t.thumbnail ? "" : `<span class="fallback">${esc(initials(t.creator))}</span>`}
+    </div>
+    <div class="r-info">
+      <div class="r-title">${esc(t.title)}</div>
+      <div class="r-sub">
+        <span>${esc(t.creator)}</span><span class="sep">·</span>
+        <span>${fmtDuration(t.duration)}</span><span class="sep">·</span>
+        <span class="r-tag">${esc(srcLabel)}</span>
+        <span class="r-tag cc">CC ${esc(t.license || "")}</span>
+      </div>
+    </div>
+    <div class="r-actions">
+      <button class="dl-btn">Descargar</button>
+      ${t.landingUrl ? `<a class="ext-link" href="${t.landingUrl}" target="_blank" rel="noopener" title="Página original y crédito">↗</a>` : ""}
+    </div>`;
+
+  el.querySelector(".thumb").addEventListener("click", () => playTrack(t, el));
+  el.querySelector(".r-title").addEventListener("click", () => playTrack(t, el));
+  el.querySelector(".dl-btn").addEventListener("click", (e) => download(t, e.currentTarget));
+  return el;
+}
+
+async function download(t, btn) {
+  btn.textContent = "Guardando…"; btn.classList.add("saving");
+  const name = `${safe(t.creator)} - ${safe(t.title)}`;
+  const params = new URLSearchParams({ url: t.url, name });
+  try {
+    const res = await fetch(`/api/download?${params}`);
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.detail || "fallo");
+    if ((data.bytes || 0) < 10000) throw new Error("archivo vacío");
+    btn.textContent = "✔"; btn.classList.add("done");
+    toast(`Guardado: music/${data.file} (${fmtBytes(data.bytes)})`);
+  } catch (e) {
+    btn.textContent = "Reintentar"; btn.classList.remove("saving");
+    toast(`No se pudo descargar: ${e.message}`, true);
+  } finally {
+    setTimeout(() => { btn.textContent = "Descargar"; btn.classList.remove("saving", "done"); }, 2600);
+  }
+}
+
+// ---------- events ----------
+document.querySelectorAll("#platforms .chip").forEach((c) =>
+  c.addEventListener("click", () => {
+    document.querySelectorAll("#platforms .chip").forEach((x) => x.classList.remove("active"));
+    c.classList.add("active");
+    run();
+  })
+);
+document.querySelectorAll("#genres .chip").forEach((c) =>
+  c.addEventListener("click", () => {
+    document.querySelectorAll("#genres .chip").forEach((x) => x.classList.remove("active"));
+    c.classList.add("active");
+    run();
+  })
+);
+$("#license").addEventListener("change", run);
+$("#go").addEventListener("click", run);
+$("#q").addEventListener("keydown", (e) => { if (e.key === "Enter") run(); });
+
+// initial load: browse all repositories without needing to type anything
+run();
+</script>
+</body>
+</html>
