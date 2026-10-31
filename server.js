@@ -215,7 +215,7 @@ async function searchCommons(query, res) {
         title: (p.title || "").replace(/^File:/, ""),
         creator: stripHtml(meta.Artist) || "—",
         url: (ii.url || "").split("?")[0], // commons appends utm_* tracking params
-        license: (stripHtml(meta.LicenseShortName) || "—").replace(/^(cc by|cc)/i, "CC"),
+        license: (stripHtml(meta.LicenseShortName) || "—").replace(/^cc\s*/i, ""),
         source: "wikimedia",
         duration: ii.duration ? Math.round(Number(ii.duration) * 1000) : null,
         filesize: ii.size ? Number(ii.size) : null,
